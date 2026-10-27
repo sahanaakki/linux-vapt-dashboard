@@ -1,0 +1,32 @@
+# Python virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# SQLite databases and database backups
+database/*.db
+database/*.sqlite
+database/*.sqlite3
+database/*.db-*
+
+# Generated reports
+reports/generated/
+*.pdf
+
+# Temporary scan output
+scans/*
+!scans/.gitkeep
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Editor and operating system files
+.vscode/
+.idea/
+.DS_Store
+*.swp

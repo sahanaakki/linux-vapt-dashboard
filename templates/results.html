@@ -1,0 +1,102 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VAPT Scan Results</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            background: #f4f6f9;
+            color: #222;
+        }
+        h1, h2 { color: #17365d; }
+        .card {
+            background: white;
+            padding: 18px;
+            margin: 16px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px #0001;
+        }
+        .finding {
+            background: white;
+            padding: 18px;
+            margin: 14px 0;
+            border-left: 6px solid #777;
+            border-radius: 6px;
+        }
+        .HIGH { border-left-color: #dc2626; }
+        .MEDIUM { border-left-color: #ea8b13; }
+        .LOW { border-left-color: #2563eb; }
+        .INFO { border-left-color: #64748b; }
+        .severity { font-weight: bold; }
+        .error { color: #b91c1c; }
+        a { color: #175cd3; }
+        code { overflow-wrap: anywhere; }
+    </style>
+</head>
+<body>
+    <h1>VAPT Scan Results</h1>
+
+    <p><a href="/">&#8592; Back to Dashboard</a></p>
+
+    {% if error %}
+        <div class="card error">
+            <h2>Unable to load scan</h2>
+            <p>{{ error }}</p>
+        </div>
+    {% endif %}
+
+    {% if scan %}
+        <div class="card">
+            <h2>Scan Information</h2>
+            <p><strong>Scan ID:</strong> {{ scan.scan_id }}</p>
+            <p><strong>Target:</strong> {{ scan.target }}</p>
+            <p><strong>Scan Type:</strong> {{ scan.scan_type }}</p>
+            <p><strong>Date:</strong> {{ scan.date }}</p>
+            <p><strong>Time:</strong> {{ scan.time }}</p>
+        </div>
+    {% endif %}
+
+    <div class="card">
+        <h2>Severity Summary</h2>
+        {% if summary %}
+            {% for severity, count in summary.items() %}
+                <p><strong>{{ severity }}:</strong> {{ count }}</p>
+            {% endfor %}
+        {% else %}
+            <p>No severity summary available.</p>
+        {% endif %}
+    </div>
+
+    <h2>Findings and Evidence</h2>
+
+    {% if findings %}
+        {% for finding in findings %}
+            <div class="finding {{ finding.severity|default('INFO', true) }}">
+                <h3>{{ finding.title|default('Untitled finding', true) }}</h3>
+                <p><strong>Severity:</strong>
+                    <span class="severity">
+                        {{ finding.severity|default('INFO', true) }}
+                    </span>
+                </p>
+                <p><strong>Description:</strong>
+                    {{ finding.description|default('No description available', true) }}
+                </p>
+                <p><strong>Evidence:</strong>
+                    {{ finding.evidence|default('No evidence recorded', true) }}
+                </p>
+                <p><strong>Recommendation:</strong>
+                    {{ finding.recommendation|default('Review the finding and verify the configuration.', true) }}
+                </p>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="card">
+            <p>No findings were returned for this scan, or the results could not be loaded.</p>
+        </div>
+    {% endif %}
+</body>
+</html>

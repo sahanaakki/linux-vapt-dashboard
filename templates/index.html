@@ -1,0 +1,311 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>VAPT Security Dashboard</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 24px;
+            font-family: Arial, sans-serif;
+            background: #f3f5f9;
+            color: #202938;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        .card {
+            background: white;
+            padding: 22px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+        }
+
+        h1, h2 {
+            color: #17356b;
+        }
+
+        input, select, button {
+            padding: 11px;
+            margin: 5px 4px 5px 0;
+            border: 1px solid #ccd3df;
+            border-radius: 6px;
+        }
+
+        input {
+            width: min(95%, 400px);
+        }
+
+        button {
+            background: #17356b;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+
+        .graphs {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .count {
+            padding: 15px;
+            background: #eef2f7;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .count strong {
+            display: block;
+            font-size: 25px;
+            margin-bottom: 5px;
+        }
+
+        .high { color: #c62828; }
+        .medium { color: #b76b00; }
+        .low { color: #2367b2; }
+        .info { color: #596579; }
+
+        .finding {
+            border-top: 1px solid #dce1e8;
+            padding: 14px 0;
+            overflow-wrap: anywhere;
+        }
+
+        .message {
+            padding: 12px;
+            background: #fff3cd;
+            border-radius: 6px;
+        }
+
+        a {
+            color: #1d4ed8;
+        }
+
+        @media (max-width: 750px) {
+            .graphs {
+                grid-template-columns: 1fr;
+            }
+
+            .summary {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            body {
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <div class="card">
+        <h1>Linux-Based VAPT Dashboard</h1>
+        <p>Automated Web and Network Vulnerability Assessment</p>
+
+        <form method="POST">
+            <label for="target"><strong>Target IP or URL</strong></label><br>
+            <input
+                id="target"
+                type="text"
+                name="target"
+                placeholder="http://127.0.0.1:5000"
+                required
+            >
+
+            <br>
+
+            <label for="scan_type"><strong>Scan Type</strong></label>
+            <select id="scan_type" name="scan_type">
+                <option value="Full">Full VAPT</option>
+                <option value="Network">Network</option>
+                <option value="Web">Web</option>
+                <option value="Linux">Linux</option>
+            </select>
+
+            <button type="submit">Start Scan</button>
+        </form>
+
+        {% if message %}
+            <p class="message">{{ message }}</p>
+        {% endif %}
+
+        {% if latest_scan %}
+            <hr>
+            <p><strong>Latest scan:</strong> #{{ latest_scan["scan_id"] }}</p>
+            <p><strong>Target:</strong> {{ latest_scan["target"] }}</p>
+            <p>
+                <a href="{{ url_for('results', scan_id=latest_scan['scan_id']) }}">
+                    View latest scan results
+                </a>
+            </p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2>Vulnerability Summary</h2>
+
+        <div class="summary">
+            <div class="count high">
+                <strong>{{ summary["HIGH"] }}</strong>HIGH
+            </div>
+            <div class="count medium">
+                <strong>{{ summary["MEDIUM"] }}</strong>MEDIUM
+            </div>
+            <div class="count low">
+                <strong>{{ summary["LOW"] }}</strong>LOW
+            </div>
+            <div class="count info">
+                <strong>{{ summary["INFO"] }}</strong>INFO
+            </div>
+        </div>
+        <p>Counts are based on the latest saved scan.</p>
+    </div>
+
+    <div class="graphs">
+        <div class="card">
+            <h2>Vulnerabilities by Severity</h2>
+            <div class="chart-container">
+                <canvas id="severityChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Scan History</h2>
+            <div class="chart-container">
+                <canvas id="historyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Latest Findings</h2>
+
+        {% if findings %}
+            {% for finding in findings %}
+                <div class="finding">
+                    <h3>{{ finding["title"] }}</h3>
+                    <p>
+                        <strong>Severity:</strong>
+                        {{ finding["severity"] }}
+                    </p>
+                    <p>
+                        <strong>Description:</strong>
+                        {{ finding["description"] or "Not provided" }}
+                    </p>
+                    <p>
+                        <strong>Evidence:</strong>
+                        {{ finding["evidence"] or "Not recorded" }}
+                    </p>
+                    <p>
+                        <strong>Recommendation:</strong>
+                        {{ finding["recommendation"] or "Review this finding." }}
+                    </p>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No findings are recorded for the latest scan.</p>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+    const severityLabels = ["HIGH", "MEDIUM", "LOW", "INFO"];
+
+    const severityValues = [
+        {{ summary["HIGH"] }},
+        {{ summary["MEDIUM"] }},
+        {{ summary["LOW"] }},
+        {{ summary["INFO"] }}
+    ];
+
+    new Chart(document.getElementById("severityChart"), {
+        type: "bar",
+        data: {
+            labels: severityLabels,
+            datasets: [{
+                label: "Number of findings",
+                data: severityValues,
+                backgroundColor: [
+                    "#c62828",
+                    "#e0a02b",
+                    "#3182ce",
+                    "#8994a5"
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+
+    const scanHistory = {{ scan_history | tojson }};
+
+    new Chart(document.getElementById("historyChart"), {
+        type: "line",
+        data: {
+            labels: scanHistory.map(
+                scan => "Scan " + scan.scan_id
+            ),
+            datasets: [{
+                label: "Findings per scan",
+                data: scanHistory.map(
+                    scan => scan.finding_count
+                ),
+                borderColor: "#315db5",
+                backgroundColor: "#a8c3f5",
+                fill: true,
+                tension: 0.2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
+
